@@ -1,3 +1,5 @@
+# app.py
+
 from flask import Flask, request, jsonify
 from transformers import pipeline, AutoImageProcessor, AutoModelForImageClassification
 from PIL import Image
@@ -5,12 +7,13 @@ import io
 
 app = Flask(__name__)
 
-# ✅ Load model and processor from local 'results/' folder
+#load model and processor from local 'results/' folder
 model = AutoModelForImageClassification.from_pretrained("results")
 processor = AutoImageProcessor.from_pretrained("results")
 
 classifier = pipeline("image-classification", model=model, feature_extractor=processor)
 
+#predict
 @app.route("/predict", methods=["POST"])
 def predict():
     if "file" not in request.files:
@@ -21,5 +24,6 @@ def predict():
     preds = classifier(image)
     return jsonify(preds)
 
+#run app
 if __name__ == "__main__":
     app.run(debug=True)

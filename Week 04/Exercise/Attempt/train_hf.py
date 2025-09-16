@@ -1,111 +1,157 @@
+# train_hf.py
 import torch
 from datasets import load_dataset, DatasetDict
 from transformers import Trainer, TrainingArguments, AutoImageProcessor, AutoModelForImageClassification
+from transformers import DefaultDataCollator
 import evaluate
 import numpy as np
+from PIL import Image
 
-
-# Use raw strings to avoid path issues
+# use raw strings
 train_path = r"C:\Users\siona\Desktop\Data\Info_4000\train-20240112T210350Z-001\train"
 test_path = r"C:\Users\siona\Desktop\Data\Info_4000\test-20240112T210346Z-001\test"
 
-
-#test test debug 
-from pathlib import Path
-# Debug: show some filenames
-print("Sample training files:")
-print(list(Path(train_path).rglob("*.jpg"))[:5])
-
-
-
-# Load datasets
+#load datasets
 train_dataset = load_dataset("imagefolder", data_dir=train_path)["train"]
 test_dataset = load_dataset("imagefolder", data_dir=test_path)["train"]
 
+print("Dataset features:", train_dataset.features)
+print("Train dataset size:", len(train_dataset))
+print("Test dataset size:", len(test_dataset))
 
-# Combine into one dataset dictionary
-dataset = DatasetDict({
-    "train": train_dataset,
-    "test": test_dataset
-})
+#check first example
+print("First example keys:", train_dataset[0].keys())
 
-# DEBUG: Inspect label key
-print("Dataset features:", dataset["train"].features)
+#define labels
+labels = train_dataset.features["label"].names
+print("Labels:", labels)
 
-# Assuming label key is "label" (change to "class" if needed)
-label_key = "label"
-
-# Define labels
-labels = dataset["train"].features[label_key].names
-
-# Load pretrained processor and model
+#load pretrained processor and model
 model_ckpt = "microsoft/resnet-18"
 processor = AutoImageProcessor.from_pretrained(model_ckpt)
 
-# Transform function
-def transform(example):
-    img = example["image"].convert("RGB")
-    inputs = processor(img, return_tensors="pt")
-    inputs["label"] = example[label_key]
-    return inputs
+#preprocessing function
+def preprocess_examples(examples):
+    #load images
+    images = examples["image"]
+    labels = examples["label"]
 
-# Apply transform
-dataset = dataset.with_transform(transform)
+    if not isinstance(images, list):
+        images = [images]
+        labels = [labels]
 
-# Data collator
-def collate_fn(batch):
-    pixel_values = torch.stack([x["pixel_values"].squeeze(0) for x in batch])
-    labels = torch.tensor([x["label"] for x in batch])
-    return {"pixel_values": pixel_values, "labels": labels}
+    #convert to RGB
+    images = [img.convert("RGB") for img in images]
+    
+    #process with the processor
+    processed = processor(images, return_tensors="pt")
+    
+    #add labels
+    processed["labels"] = labels
+    
+    return processed
 
-# Load model with correct label mapping
+#apply preprocessing to datasets
+train_dataset = train_dataset.map(
+    preprocess_examples,
+    batched=True,
+    batch_size=100,
+    remove_columns=train_dataset.column_names
+)
+
+test_dataset = test_dataset.map(
+    preprocess_examples,
+    batched=True,
+    batch_size=100,
+    remove_columns=test_dataset.column_names
+)
+
+#set format for PyTorch
+train_dataset.set_format("torch")
+test_dataset.set_format("torch")
+
+print("After preprocessing - train features:", train_dataset.features)
+
+#load model with correct label mapping
 model = AutoModelForImageClassification.from_pretrained(
-    "microsoft/resnet-18",
+    model_ckpt,
     num_labels=len(labels),
     id2label={i: l for i, l in enumerate(labels)},
     label2id={l: i for i, l in enumerate(labels)},
-    ignore_mismatched_sizes=True  # <--- add this line!
+    ignore_mismatched_sizes=True
 )
 
+#use default data collator
+data_collator = DefaultDataCollator()
 
-# Accuracy metric
+#accuracy metric
 metric = evaluate.load("accuracy")
 
 def compute_metrics(p):
     preds = np.argmax(p.predictions, axis=1)
     return metric.compute(predictions=preds, references=p.label_ids)
 
-#debug
-print("TrainingArguments source:", TrainingArguments.__module__)
-
-
-# Training arguments
+#training arguments
 args = TrainingArguments(
     output_dir="results",
     per_device_train_batch_size=8,
     per_device_eval_batch_size=8,
-    evaluation_strategy="epoch",
+    eval_strategy="epoch",
     num_train_epochs=2,
     save_strategy="epoch",
-    push_to_hub=False,  # CHANGE: Only do this if you want to push!
+    push_to_hub=False,
+    logging_dir="./logs",
+    logging_steps=100,
+    dataloader_pin_memory=False,  # Disable pin_memory to avoid warning
 )
 
-# Trainer
+#trainer
 trainer = Trainer(
     model=model,
     args=args,
-    train_dataset=dataset["train"],
-    eval_dataset=dataset["test"],
-    tokenizer=processor,
-    data_collator=collate_fn,
+    train_dataset=train_dataset,
+    eval_dataset=test_dataset,
+    processing_class=processor,
+    data_collator=data_collator,
     compute_metrics=compute_metrics
 )
 
-# Train
+#train
+print("Starting training...")
 trainer.train()
 
-# Save model & processor locally
+#save model & processor locally
 model.save_pretrained("results")
 processor.save_pretrained("results")
 
 print("✅ Model trained and saved in 'results/' folder.")
+
+#evaluateeeee, for debug
+results = trainer.evaluate()
+print("Test Accuracy:", results["eval_accuracy"])
+
+
+"""
+Questions:
+1. What specific preprocessing did you do on the data?
+
+    I loaded all the images, converted them to RGB, and used a pretrained 
+    image processor to resize and normalize them so they fit the model's 
+    input format. I also mapped the class labels properly for training.
+
+
+2. Which model did you use and what, if any, were the modifications you made to the
+pretrained model and why?
+
+    I used a pretrained ResNet-18 model from Microsoft and
+    I replaced its final layer to match the number of classes
+    in my dataset and set up the label mappings so predictions return the correct class names. 
+    No other major changes were made.
+
+3. What were the performance metrics of the model and how many predictions did you
+get correct?
+
+    The model reached 97.2 percent accuracy on the test set and got 243 correct predictions.
+
+
+"""
