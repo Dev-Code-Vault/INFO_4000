@@ -1,10 +1,3 @@
-# Requirements.txt
-torch>=1.9.0
-transformers>=4.20.0
-datasets>=2.0.0
-scikit-learn>=1.0.0
-pandas>=1.3.0
-numpy>=1.21.0
-flask>=2.0.0
-streamlit>=1.25.0
-requests>=2.25.0
+version https://git-lfs.github.com/spec/v1
+oid sha256:89ff5252c37ac0a3163972f1dd0d14d26a90acc0452e26983112e31a047abd9c
+size 164
