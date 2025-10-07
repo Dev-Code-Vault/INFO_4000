@@ -1,45 +1,41 @@
-"""
-all_weather_subscriber.py
-Subscribes to "weather/#", uses client.loop_start(), stops after 50 messages using loop_stop().
-"""
-import json
-import time
+# Week 06/HW2/Attempt/P1_all_weather_subscriber.py
+#import libraries
 import paho.mqtt.client as mqtt
+import json
 
+# define variables
 BROKER = "test.mosquitto.org"
 PORT = 1883
-TOPIC = "weather/#"
-CLIENT_ID = "all_weather_sub"
+TOPIC = "siona/weather/#"  # listens to all weather topics
+CLIENT_ID = "all_weather_subscriber"
 
-count = 0
-MAX_MESSAGES = 50
+data_points = []
 
+# define callback functions
 def on_connect(client, userdata, flags, rc):
-    print("Connected with result code", rc)
-    client.subscribe(TOPIC)
+    if rc == 0:
+        print("Connected successfully!")
+        client.subscribe(TOPIC)
+    else:
+        print("Connection failed. Code:", rc)
 
 def on_message(client, userdata, msg):
-    global count
-    try:
-        payload = json.loads(msg.payload.decode())
-    except Exception:
-        payload = msg.payload.decode()
-    print(f"[{count+1}] Topic: {msg.topic}, Payload: {payload}")
-    count += 1
-    if count >= MAX_MESSAGES:
-        print("Reached max messages. Stopping client loop.")
-        client.loop_stop()  # stops the background loop thread
+    global data_points
+    payload = json.loads(msg.payload.decode())
+    data_points.append(payload)
+    print(f"Received: {payload}")
+    if len(data_points) >= 50:
+        print("Received 50 data points. Stopping...")
+        client.disconnect()  # stops the loop and disconnects
 
-client = mqtt.Client(CLIENT_ID)
+# initialize mqtt client
+client = mqtt.Client(client_id=CLIENT_ID)
 client.on_connect = on_connect
 client.on_message = on_message
 
-client.connect(BROKER, PORT, keepalive=60)
-client.loop_start()  # non-blocking, runs in background
+# connect to broker
+client.connect(BROKER, PORT, 60)
 
-# Keep main thread alive until loop_stop is called
-while client.is_connected() and count < MAX_MESSAGES:
-    time.sleep(0.1)
-
-client.disconnect()
-print("Disconnected.")
+# start the loop
+print("Listening for all weather data...")
+client.loop_forever()  # blocking, will run until disconnect

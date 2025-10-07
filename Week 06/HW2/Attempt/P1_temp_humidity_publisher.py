@@ -1,37 +1,37 @@
-"""
-temp_humidity_publisher.py
-Publishes JSON messages with temperature (50-52 F) and humidity (60-80 %)
-every second to topic "weather/temphum".
-"""
-import json
-import time
-import random
-import paho.mqtt.client as mqtt
+# Week 06/HW2/Attempt/P1_temp_humidity_publisher.py
 
+#import libraries
+import paho.mqtt.client as mqtt
+import json
+import random
+import time
+
+#define variables
 BROKER = "test.mosquitto.org"
 PORT = 1883
-TOPIC = "weather/temphum"
-CLIENT_ID = "temp_hum_publisher"
+TOPIC = "siona/weather/temp_humidity"
+CLIENT_ID = "temp_humidity_publisher"
 
+#initialize mqtt client
 client = mqtt.Client(CLIENT_ID)
-client.connect(BROKER, PORT, keepalive=60)
+client.connect(BROKER, PORT, 60)
 
+#start the loop
 try:
-    count = 0
-    while True:
-        temp = round(random.uniform(50.0, 52.0), 2)
-        hum = round(random.uniform(60.0, 80.0), 2)
+    msg_id = 0
+    while True: #infinite loop
+        temp_f = round(random.uniform(50, 52), 2)
+        humidity_pct = round(random.uniform(60, 80), 2)
         payload = {
-            "id": count,
-            "temp_f": temp,
-            "humidity_pct": hum,
+            "id": msg_id,
+            "temp_f": temp_f,
+            "humidity_pct": humidity_pct,
             "ts": time.time()
         }
         client.publish(TOPIC, json.dumps(payload))
         print(f"Published: {payload}")
-        count += 1
-        time.sleep(1.0)
+        msg_id += 1
+        time.sleep(1)
 except KeyboardInterrupt:
-    print("Stopping publisher.")
-finally:
+    print("Publisher stopped.")
     client.disconnect()

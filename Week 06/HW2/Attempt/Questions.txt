@@ -1,0 +1,22 @@
+Part 1
+    1. My takeway from the MQTT was from earlier as I used it in
+    Engineering applications, and in there we also used MQTT 
+    and it is a lot simpler and smoother than others. After handling 
+    a couple errors you can get a good connection which you can 
+    subscribe and publish using topics.
+
+    2. The loop_forever would block the script and nothing will execute 
+    as the code keeps running. while using the loop_start and stop itll run
+    the loop in differeint threads allowing the rest to keep going.
+    If it was a whole application it would never run as loop_forever
+    would stop any code from running. This just shows how the loop_start
+    method is much more flexible.
+
+Part 2
+    To solve the lunar lander v2 the agent sees the game state and chooses
+    the best action using a neural network that estimates Q values for each move.
+    Then the agent stores the expereince in a replay buffer and trains, this helps 
+    learning from correlated data. Over time the agent learnns and improves by minimizing
+    the difference between the predicted Q value and the target values. it also gets in the epsilon 
+    greedy selection allowing it to explore more early and use what it learned.
+
