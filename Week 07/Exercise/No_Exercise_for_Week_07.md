@@ -1,0 +1,1 @@
+NO exercise, HW, MP for week 07 was had, week 08 has exercise 8 to be completed
