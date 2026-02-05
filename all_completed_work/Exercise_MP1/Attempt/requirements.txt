@@ -1,0 +1,16 @@
+# Requirements.txt
+
+# Core
+pandas
+numpy
+scikit-learn
+torch
+transformers
+datasets
+
+# Backend
+flask
+
+# Frontend
+streamlit
+requests

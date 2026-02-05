@@ -1,0 +1,15 @@
+
+paho-mqtt==1.6.1
+
+gymnasium==0.30.0
+pygame==2.6.1
+cloudpickle==2.2.1
+Farama-Notifications==0.0.4
+
+box2d-py==2.3.5
+
+torch==2.2.0
+torchvision==0.17.1
+numpy==1.26.2
+
+matplotlib==3.8.1
